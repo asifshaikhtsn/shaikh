@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-08-27T12:13:16Z",
+  "sources": [
+    "habibi-boost",
+    "habibi-boost-1",
+    "habibi-boost-2",
+    "habibi-boost-3",
+    "habibi-boost-socks4-1",
+    "habibi-boost-socks4-2",
+    "habibi-boost-socks4-3",
+    "habibi-boost-socks5-1",
+    "habibi-boost-socks5-2",
+    "habibi-boost-socks5-3"
+  ],
+  "per_repo": {
+    "habibi-boost": 0,
+    "habibi-boost-1": 0,
+    "habibi-boost-2": 0,
+    "habibi-boost-3": 0,
+    "habibi-boost-socks4-1": 0,
+    "habibi-boost-socks4-2": 0,
+    "habibi-boost-socks4-3": 0,
+    "habibi-boost-socks5-1": 0,
+    "habibi-boost-socks5-2": 0,
+    "habibi-boost-socks5-3": 0
+  },
+  "total_fetched": 0,
+  "unique": 0,
+  "protocol_counts": {},
+  "country_count": 0,
+  "country_counts": {}
+}
