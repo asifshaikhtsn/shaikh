@@ -1,0 +1,43 @@
+name: Aggregate Shaikh
+
+on:
+  schedule:
+    - cron: "15 * * * *"  # 15 min past every hour (after boosts at :00)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shaikh
+  cancel-in-progress: true
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install aiohttp
+
+      - name: Run aggregator
+        run: python aggregate.py
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Aggregate working proxies from 9 boosts [skip ci]"
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          git pull --rebase --autostash origin $BRANCH || true
+          git push origin HEAD
