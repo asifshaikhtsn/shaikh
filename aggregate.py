@@ -34,7 +34,12 @@ async def fetch_live(session, repo):
     try:
         async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
             if resp.status == 200:
-                data = await resp.json()
+                # raw.githubusercontent returns text/plain for json, so ignore content_type
+                try:
+                    data = await resp.json(content_type=None)
+                except Exception:
+                    text = await resp.text()
+                    data = json.loads(text)
                 proxies = data.get("proxies", [])
                 # proxies is list of {"proxy": "ip:port", "country": "XX"}
                 return proxies
