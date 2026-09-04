@@ -25,19 +25,39 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install aiohttp aiohttp-socks
+      - name: GeoLite cache key
+        id: geo-date
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
 
-      - name: Run aggregator
-        run: python aggregate.py
+      - name: Cache GeoLite2 Country
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/GeoLite2-Country.mmdb
+          key: geolite2-country-${{ runner.os }}-${{ steps.geo-date.outputs.week }}
+
+      - name: Install dependencies
+        run: pip install aiohttp aiohttp-socks geoip2
+
+      - name: Fetch shared geolocation layer
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/asifshaikhtsn/Walla/main/geo_country.py -o geo_country.py
+          curl -fsSL https://raw.githubusercontent.com/asifshaikhtsn/Walla/main/geo_runner.py -o geo_runner.py
+
+      - name: Run aggregator with MaxMind/IPinfo geolocation
+        env:
+          MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+          IPINFO_TOKEN: ${{ secrets.IPINFO_TOKEN }}
+        run: python geo_runner.py aggregate.py
 
       - name: Commit results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f geo_country.py geo_runner.py
           git add -A
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "Aggregate working proxies from 9 boosts [skip ci]"
+          git commit -m "Aggregate working proxies with improved country data [skip ci]"
           BRANCH=$(git rev-parse --abbrev-ref HEAD)
           git pull --rebase --autostash origin $BRANCH || true
           git push origin HEAD
