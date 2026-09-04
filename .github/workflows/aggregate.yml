@@ -2,7 +2,7 @@ name: Aggregate Shaikh
 
 on:
   schedule:
-    - cron: "15 * * * *"  # 15 min past every hour (after boosts at :00)
+    - cron: "30 * * * *"  # allow boost repos time to finish first
   workflow_dispatch:
 
 permissions:
@@ -15,7 +15,7 @@ concurrency:
 jobs:
   aggregate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
         with:
@@ -38,12 +38,12 @@ jobs:
       - name: Install dependencies
         run: pip install aiohttp aiohttp-socks geoip2
 
-      - name: Fetch shared geolocation layer
+      - name: Fetch shared v2 proxy engine
         run: |
           curl -fsSL https://raw.githubusercontent.com/asifshaikhtsn/Walla/main/geo_country.py -o geo_country.py
           curl -fsSL https://raw.githubusercontent.com/asifshaikhtsn/Walla/main/geo_runner.py -o geo_runner.py
 
-      - name: Run aggregator with MaxMind/IPinfo geolocation
+      - name: Aggregate 10 boosts and reclassify country with MaxMind
         env:
           MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
           MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
@@ -55,9 +55,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rm -f geo_country.py geo_runner.py
-          git add -A
-          git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "Aggregate working proxies with improved country data [skip ci]"
-          BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          git pull --rebase --autostash origin $BRANCH || true
-          git push origin HEAD
+          for i in {1..3}; do
+            git add -A
+            git diff --cached --quiet || git commit -m "Aggregate 10 boosts with proxy pool v2 [skip ci]"
+            BRANCH=$(git rev-parse --abbrev-ref HEAD)
+            git pull --rebase --autostash origin "$BRANCH" && git push origin HEAD && break
+            echo "Push failed (attempt $i/3), retrying in 10s..."
+            sleep 10
+          done
