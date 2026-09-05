@@ -43,7 +43,46 @@ jobs:
           curl -fsSL https://raw.githubusercontent.com/asifshaikhtsn/Walla/main/geo_country.py -o geo_country.py
           curl -fsSL https://raw.githubusercontent.com/asifshaikhtsn/Walla/main/geo_runner.py -o geo_runner.py
 
-      - name: Aggregate 10 boosts and reclassify country with MaxMind
+      - name: Validate Sevenworks and Vann direct sources
+        env:
+          MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+          IPINFO_TOKEN: ${{ secrets.IPINFO_TOKEN }}
+        run: |
+          set -euo pipefail
+          BASE="$RUNNER_TEMP/shaikh-direct"
+          mkdir -p "$BASE"
+
+          run_direct() {
+            id="$1"
+            proto="$2"
+            url="$3"
+            max="$4"
+            dir="$BASE/$id"
+            mkdir -p "$dir"
+            echo "Validating $id ($proto)..."
+            (
+              cd "$dir"
+              DIRECT_PROTO="$proto" \
+              DIRECT_URL="$url" \
+              DIRECT_MAX="$max" \
+              DIRECT_CONCURRENCY="180" \
+              python "$GITHUB_WORKSPACE/geo_runner.py" "$GITHUB_WORKSPACE/direct_boost.py"
+            )
+          }
+
+          run_direct "sevenworks-http" "HTTP" \
+            "https://raw.githubusercontent.com/SevenworksDev/proxy-list/main/proxies/http.txt" 5000
+          run_direct "sevenworks-https" "HTTPS" \
+            "https://raw.githubusercontent.com/SevenworksDev/proxy-list/main/proxies/https.txt" 5000
+          run_direct "sevenworks-socks4" "SOCKS4" \
+            "https://raw.githubusercontent.com/SevenworksDev/proxy-list/main/proxies/socks4.txt" 5000
+          run_direct "sevenworks-socks5" "SOCKS5" \
+            "https://raw.githubusercontent.com/SevenworksDev/proxy-list/main/proxies/socks5.txt" 5000
+          run_direct "vann-dev-socks5" "SOCKS5" \
+            "https://raw.githubusercontent.com/Vann-Dev/proxy-list/main/proxies/socks5.txt" 5000
+
+      - name: Aggregate boosts plus validated direct sources and reclassify country with MaxMind
         env:
           MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
           MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
@@ -57,7 +96,7 @@ jobs:
           rm -f geo_country.py geo_runner.py
           for i in {1..3}; do
             git add -A
-            git diff --cached --quiet || git commit -m "Aggregate 10 boosts with proxy pool v2 [skip ci]"
+            git diff --cached --quiet || git commit -m "Aggregate boosts + validated direct sources [skip ci]"
             BRANCH=$(git rev-parse --abbrev-ref HEAD)
             git pull --rebase --autostash origin "$BRANCH" && git push origin HEAD && break
             echo "Push failed (attempt $i/3), retrying in 10s..."
