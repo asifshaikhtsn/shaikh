@@ -1,13 +1,15 @@
 import asyncio
 import importlib.util
 import json
+import os
 import sys
 import urllib.request
 from pathlib import Path
 
 import aiohttp
 
-# 10 protocol-specific boost repos. Protocols are normalized uppercase.
+# Existing protocol-specific boost repos plus validated direct-source snapshots.
+# Protocols are normalized uppercase by the shared engine.
 SOURCES = [
     ("habibi-boost", "HTTP"),
     ("habibi-boost-1", "HTTP"),
@@ -19,13 +21,44 @@ SOURCES = [
     ("habibi-boost-socks5-1", "SOCKS5"),
     ("habibi-boost-socks5-2", "SOCKS5"),
     ("habibi-boost-socks5-3", "SOCKS5"),
+    ("sevenworks-http", "HTTP"),
+    ("sevenworks-https", "HTTPS"),
+    ("sevenworks-socks4", "SOCKS4"),
+    ("sevenworks-socks5", "SOCKS5"),
+    ("vann-dev-socks5", "SOCKS5"),
 ]
 
 LIVE_JSON_URL = "https://raw.githubusercontent.com/asifshaikhtsn/{repo}/master/data/live_proxies.json"
 CONCURRENCY = 200
 
+DIRECT_SOURCE_IDS = {
+    "sevenworks-http",
+    "sevenworks-https",
+    "sevenworks-socks4",
+    "sevenworks-socks5",
+    "vann-dev-socks5",
+}
+
+
+def _direct_live_path(source_id):
+    runner_temp = Path(os.environ.get("RUNNER_TEMP", "/tmp"))
+    return runner_temp / "shaikh-direct" / source_id / "data" / "live_proxies.json"
+
 
 async def fetch_live(session, repo):
+    if repo in DIRECT_SOURCE_IDS:
+        path = _direct_live_path(repo)
+        if not path.exists():
+            print(f"[{repo}] validated local snapshot missing: {path}")
+            return []
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            rows = data.get("proxies", [])
+            return rows if isinstance(rows, list) else []
+        except Exception as exc:
+            print(f"[{repo}] local snapshot error: {exc}")
+            return []
+
     url = LIVE_JSON_URL.format(repo=repo)
     try:
         async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
