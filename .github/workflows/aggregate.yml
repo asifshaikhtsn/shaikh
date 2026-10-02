@@ -2,7 +2,7 @@ name: Aggregate Shaikh
 
 on:
   schedule:
-    - cron: "30 * * * *"  # allow boost repos time to finish first
+    - cron: "27 * * * *"  # staggered to avoid peak scheduler slots
   workflow_dispatch:
 
 permissions:
