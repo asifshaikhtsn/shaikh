@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -53,6 +54,16 @@ async def fetch_live(session, repo):
             return []
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
+            updated = data.get("updated")
+            if updated is not None:
+                try:
+                    age_hours = max(0.0, (time.time() - float(updated)) / 3600)
+                    if age_hours > 12:
+                        print(f"::warning::[{repo}] child snapshot is {age_hours:.1f} hours old")
+                except (TypeError, ValueError, OverflowError):
+                    print(f"::warning::[{repo}] invalid child snapshot updated timestamp")
+            else:
+                print(f"::warning::[{repo}] child snapshot has no updated timestamp")
             rows = data.get("proxies", [])
             return rows if isinstance(rows, list) else []
         except Exception as exc:
