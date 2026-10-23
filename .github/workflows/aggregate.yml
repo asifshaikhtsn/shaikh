@@ -98,7 +98,7 @@ jobs:
             git add -A
             git diff --cached --quiet || git commit -m "Aggregate boosts + validated direct sources [skip ci]"
             BRANCH=$(git rev-parse --abbrev-ref HEAD)
-            git pull --rebase --autostash origin "$BRANCH" && git push origin HEAD && break
+            git pull --rebase --autostash origin "$BRANCH" && git push origin HEAD && exit 0
             echo "Push failed (attempt $i/3), retrying in 10s..."
             sleep 10
           done
